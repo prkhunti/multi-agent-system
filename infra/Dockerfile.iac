@@ -1,0 +1,14 @@
+FROM node:24-bookworm-slim
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace/infra/iac
+
+COPY infra/iac/package.json infra/iac/package-lock.json ./
+RUN npm ci
+
+COPY infra/iac ./
+
+CMD ["npm", "test"]

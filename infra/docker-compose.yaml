@@ -1,0 +1,149 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    env_file:
+      - ../.env
+    environment:
+      REPOSITORY_BACKEND: postgres
+      DATABASE_URL: postgresql+asyncpg://supplier:supplier@postgres:5432/supplier_assurance
+      CHECKPOINT_BACKEND: postgres
+      LANGGRAPH_DATABASE_URL: postgresql://supplier:supplier@postgres:5432/supplier_assurance
+      LANGGRAPH_STRICT_MSGPACK: "true"
+      REDIS_URL: redis://redis:6379/0
+      OPENSEARCH_URL: http://opensearch:9200
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/health')
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  outbox-worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.outbox
+    env_file:
+      - ../.env
+    environment:
+      REPOSITORY_BACKEND: postgres
+      DATABASE_URL: postgresql+asyncpg://supplier:supplier@postgres:5432/supplier_assurance
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  mcp-server:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.mcp
+    env_file:
+      - ../.env
+    environment:
+      REPOSITORY_BACKEND: postgres
+      DATABASE_URL: postgresql+asyncpg://supplier:supplier@postgres:5432/supplier_assurance
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - governance
+
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.90.0
+    env_file:
+      - ../.env
+    command:
+      - --config=/app/config.yaml
+      - --port=4000
+    volumes:
+      - ../configs/litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "4000:4000"
+    profiles:
+      - gateway
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: supplier_assurance
+      POSTGRES_USER: supplier
+      POSTGRES_PASSWORD: supplier
+    ports:
+      - "${POSTGRES_HOST_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supplier -d supplier_assurance"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  opensearch:
+    image: opensearchproject/opensearch:2
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    profiles:
+      - search
+
+  test:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.test
+    working_dir: /app
+    volumes:
+      - ..:/app
+    profiles:
+      - test
+
+  iac:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.iac
+    working_dir: /workspace/infra/iac
+    environment:
+      AWS_PROFILE: ${AWS_PROFILE:-}
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-}
+    volumes:
+      - ..:/workspace
+      - iac-node-modules:/workspace/infra/iac/node_modules
+    profiles:
+      - tooling
+
+volumes:
+  iac-node-modules:
+  postgres-data:
+  opensearch-data:

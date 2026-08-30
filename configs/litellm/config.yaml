@@ -1,0 +1,13 @@
+model_list:
+  - model_name: supplier-review
+    litellm_params:
+      model: os.environ/LITELLM_BEDROCK_MODEL
+      aws_region_name: os.environ/AWS_REGION
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true
+  json_logs: true
+  set_verbose: false

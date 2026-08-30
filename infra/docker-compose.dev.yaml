@@ -1,0 +1,7 @@
+services:
+  api:
+    command:
+      - scripts/api-entrypoint.sh
+      - --reload
+    volumes:
+      - ..:/app

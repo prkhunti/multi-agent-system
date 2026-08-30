@@ -1,0 +1,10 @@
+version: 1
+default_backend: deterministic
+routes:
+  supplier-review:
+    backend: deterministic
+    data_classes:
+      - public
+      - internal
+      - confidential
+fallbacks: []

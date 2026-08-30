@@ -1,0 +1,14 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml README.md ./
+COPY apps ./apps
+COPY packages ./packages
+
+RUN pip install --no-cache-dir ".[outbox]"
+
+CMD ["python", "-m", "apps.outbox_worker.main"]

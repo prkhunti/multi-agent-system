@@ -1,0 +1,38 @@
+{
+  "Comment": "Human approval boundary for Supplier Assurance governed actions",
+  "StartAt": "RequestHumanApproval",
+  "States": {
+    "RequestHumanApproval": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
+      "HeartbeatSeconds": 86400,
+      "Parameters": {
+        "QueueUrl": "${ApprovalQueueUrl}",
+        "MessageBody": {
+          "action.$": "$",
+          "task_token.$": "$$.Task.Token"
+        }
+      },
+      "Next": "ApprovalDecision"
+    },
+    "ApprovalDecision": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.status",
+          "StringEquals": "approved",
+          "Next": "Approved"
+        }
+      ],
+      "Default": "Rejected"
+    },
+    "Approved": {
+      "Type": "Succeed"
+    },
+    "Rejected": {
+      "Type": "Fail",
+      "Error": "SupplierActionRejected",
+      "Cause": "The governed supplier action was rejected by a human approver."
+    }
+  }
+}

@@ -1,0 +1,17 @@
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml README.md ./
+COPY apps ./apps
+COPY packages ./packages
+COPY scripts ./scripts
+
+RUN pip install --no-cache-dir ".[api]" && chmod +x scripts/api-entrypoint.sh
+
+EXPOSE 8000
+
+CMD ["scripts/api-entrypoint.sh"]

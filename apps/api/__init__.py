@@ -1,0 +1,1 @@
+"""Supplier assurance API application."""

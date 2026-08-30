@@ -1,0 +1,9 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+COPY pyproject.toml README.md ${LAMBDA_TASK_ROOT}/
+COPY apps ${LAMBDA_TASK_ROOT}/apps
+COPY packages ${LAMBDA_TASK_ROOT}/packages
+
+RUN pip install --no-cache-dir ".[api]"
+
+CMD ["apps.api.lambda_handler.handler"]

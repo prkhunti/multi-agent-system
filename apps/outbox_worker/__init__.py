@@ -1,0 +1,1 @@
+"""Transactional outbox worker service."""

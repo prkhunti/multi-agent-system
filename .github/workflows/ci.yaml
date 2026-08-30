@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: |
+          make env
+          docker compose -f infra/docker-compose.yaml config --quiet
+          docker compose -f infra/docker-compose.yaml -f infra/docker-compose.dev.yaml config --quiet
+      - name: Lint
+        run: make lint
+      - name: Typecheck
+        run: make typecheck
+      - name: Test
+        run: make test
+
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test and typecheck infrastructure
+        run: make iac-test
